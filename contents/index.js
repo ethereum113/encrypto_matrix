@@ -166,10 +166,6 @@ function Index() {
 		var originAalphabetNumberSymbolCharacters = me.numberCharacters.concat(me.alphabetLowerCharacters, me.alphabetUpperCharacters, me.symbolCharacters);
 		var alphabetNumberSymbolCharacters = me.filledOverMaxTile(originAalphabetNumberSymbolCharacters);
 		var correspondenceCharacters = n1d.clone(rootCharacters);
-		console.log("rootCharacters.length", rootCharacters.length);
-		console.log("correspondenceCharacters.length", correspondenceCharacters.length);
-		console.log(rootCharacters);
-		console.log(correspondenceCharacters);
 		numberCharacters = n1d.shuffle(numberCharacters);
 		alphabetNumberCharacters = n1d.shuffle(alphabetNumberCharacters);
 		alphabetNumberSymbolCharacters = n1d.shuffle(alphabetNumberSymbolCharacters);
@@ -198,8 +194,6 @@ function Index() {
 		var tileWidth = 10;
 		var tileHeight = 10;
 		var coordinates = [];
-		var left = 0;
-		var top = 0;
 		if(placemantPriority == "row") {
 			for(var y = 0; y < 5; y += 1) {
 				for(var x = 0; x < 8; x += 1) {
@@ -266,6 +260,7 @@ function Index() {
 		var me = this;
 		$("#button-seed-update").click(function() {
 			var seed = random.intRange(0, 4294967296);
+			seed = (seed + parseInt((new Date()).getTime() / 1000)) % 4294967296;
 			console.log("create seed = " + String(seed));
 			random.seed(seed);
 			me.updateMainMatrix();
@@ -283,14 +278,6 @@ function Index() {
 		var me = this;
 		me.setupEvents();
 		me.updateMainMatrix();
-		/*
-		console.log("self.alphabetLowerCharacters", self.alphabetLowerCharacters);
-		console.log("self.alphabetUpperCharacters", self.alphabetUpperCharacters);
-		console.log("self.numberCharacters", self.numberCharacters);
-		console.log("self.symbolCharacters", self.symbolCharacters);
-		var tileValues = me.setupValues();
-		console.log(tileValues);
-		*/
     }
 }
 
