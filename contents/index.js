@@ -4,6 +4,37 @@ python -m http.server 8000 --directory ./contents^C
 */
 var constMaxTileCount = 40;
 
+function LinearCongruentialGenerator(seed) {
+    // m, a, c は適切に選択された定数
+    var m = 4294967296; // 2^32
+    var a = 1664525;
+    var c = 1013904223;
+    var state = seed;
+    this.next = function() {
+        state = (a * state + c) % m;
+        return state / m;
+    }
+}
+
+function Random() {
+	var self = this;
+	self.generator = new LinearCongruentialGenerator(0);
+	self.seed = function(n) {
+		var me = this;
+		me.generator = new LinearCongruentialGenerator(n);
+	}
+	self.rand = function() {
+		var me = this;
+		return me.generator.next();
+	}
+	self.intRange = function(min, max) {
+		var me = this;
+		return Math.floor(me.generator.next() * (max - min + 1)) + min;
+	}
+}
+
+var random = new Random();
+
 function Number1D() {
 	var self = this;
 	self.array = function(n) {
@@ -27,7 +58,8 @@ function Number1D() {
 	self.shuffle = function(a) {
 		var res = [...a];
 		for (var i = res.length - 1; i > 0; i--) {
-			var j = Math.floor(Math.random() * (i + 1));
+			var j = Math.floor(random.rand() * (i + 1));
+			//var j = Math.floor(Math.random() * (i + 1));
 			[res[i], res[j]] = [res[j], res[i]]; // 要素を入れ替える
 		}
 		return res;
@@ -71,10 +103,16 @@ function Index() {
 	self.tileTemplateElement = function() {
 		return $("#div-tile-template");
 	}
-	
+	self.seedInputElement = function() {
+		return $("#input-seed-number");
+	}
+	self.setSeedNumber = function(n) {
+		var me = this;
+		me.seedInputElement().val(n);
+	}
 	self.getSeedNumber = function() {
 		var me = this;
-		var seedNumberString = $("#input-seed-number").val();
+		var seedNumberString = me.seedInputElement().val();
 		return parseInt(seedNumberString);
 	}
 	
@@ -91,7 +129,6 @@ function Index() {
 	self.createTile = function(centerCharacter, cornerCharacters) {
 		var me = this;
 		var cloneTile = me.createTileClone();
-		console.log("#####", cloneTile.find("[name='center']"));
 		cloneTile.find("[name='center']").text(centerCharacter);
 		var elements = [
 			cloneTile.find("[name='top-left']"),
@@ -122,7 +159,6 @@ function Index() {
 			me.alphabetLowerCharacters,
 			symbolCharacters4
 		);
-		console.log("### rootCharacters", rootCharacters);
 		var originNumberCharacters = n1d.clone(me.numberCharacters);
 		var numberCharacters = me.filledOverMaxTile(originNumberCharacters);
 		var originAlphabetNumberCharacters = me.numberCharacters.concat(me.alphabetLowerCharacters, me.alphabetUpperCharacters);
@@ -130,6 +166,10 @@ function Index() {
 		var originAalphabetNumberSymbolCharacters = me.numberCharacters.concat(me.alphabetLowerCharacters, me.alphabetUpperCharacters, me.symbolCharacters);
 		var alphabetNumberSymbolCharacters = me.filledOverMaxTile(originAalphabetNumberSymbolCharacters);
 		var correspondenceCharacters = n1d.clone(rootCharacters);
+		console.log("rootCharacters.length", rootCharacters.length);
+		console.log("correspondenceCharacters.length", correspondenceCharacters.length);
+		console.log(rootCharacters);
+		console.log(correspondenceCharacters);
 		numberCharacters = n1d.shuffle(numberCharacters);
 		alphabetNumberCharacters = n1d.shuffle(alphabetNumberCharacters);
 		alphabetNumberSymbolCharacters = n1d.shuffle(alphabetNumberSymbolCharacters);
@@ -140,38 +180,53 @@ function Index() {
 				"center": String(rootCharacters[i]),
 				"top-left": String(numberCharacters[i]),
 				"top-right": String(alphabetNumberCharacters[i]),
-				"bottom-right": String(alphabetNumberSymbolCharacters[i]),
-				"bottom-left": String(correspondenceCharacters[i]),
+				"bottom-left": String(alphabetNumberSymbolCharacters[i]),
+				"bottom-right": String(correspondenceCharacters[i]),
 			});
 		}
 		return items;
 	}
 	
-	self.createTileCoordinates = function() {
+	self.createTileCoordinates = function(placemantPriority) {
 		var me = this;
 		var width = 91.0;
 		var height = 55.0;
 		var startLeft = 1;
 		var startTop = 1;
-		var margin = 1;
+		var wmargin = 1.3;
+		var hmargin = 1;
 		var tileWidth = 10;
 		var tileHeight = 10;
 		var coordinates = [];
-		for(var x = 0; x < 8; x += 1) {
+		var left = 0;
+		var top = 0;
+		if(placemantPriority == "row") {
 			for(var y = 0; y < 5; y += 1) {
-				coordinates.push({
-					"left": startLeft + tileWidth * x + margin,
-					"top": startTop + tileHeight * y + margin
-				});
+				for(var x = 0; x < 8; x += 1) {
+					coordinates.push({
+						"left": startLeft + tileWidth * x + wmargin * x,
+						"top": startTop + tileHeight * y + hmargin * y
+					});
+				}
+			}
+		} else { // col
+			for(var x = 0; x < 8; x += 1) {
+				for(var y = 0; y < 5; y += 1) {
+					coordinates.push({
+						"left": startLeft + tileWidth * x + wmargin * x,
+						"top": startTop + tileHeight * y + hmargin * y
+					});
+				}
 			}
 		}
+
 		return coordinates;
 	}
 	self.createTileElements = function() {
 		var me = this;
 		var allTileElements = [];
 		for(var i = 0; i < constMaxTileCount; i += 1) {
-			var tile = me.createTile(String(i), [0, 9, 8, 7].map(x => String(x)));
+			var tile = me.createTile(String(i), [1, 2, 3, 4].map(x => String(x)));
 			allTileElements.push(tile);
 		}
 		return allTileElements;
@@ -179,25 +234,25 @@ function Index() {
 	self.updateMainMatrix = function() {
 		var me = this;
 		var values = me.createCryproValues();
-		var coordinates = me.createTileCoordinates();
+		var coordinates = me.createTileCoordinates("row");
 		var tiles = me.createTileElements();
 		for(var i = 0; i < constMaxTileCount; i += 1) {
 			var value = values[i];
 			var coordinate = coordinates[i];
 			var tile = tiles[i];
             tile.css({
-                position: 'absolute',
-                left: coordinate["left"] + "mm",
-                top: coordinate["top"] + "mm",
-                width: '9mm',
-                height: '9mm',
+                "position": 'absolute',
+                "left": String(coordinate["left"]) + "mm",
+                "top": String(coordinate["top"]) + "mm",
+                "width": '9mm',
+                "height": '9mm',
                 //backgroundColor: '#'+Math.floor(Math.random()*16777215).toString(16) // ランダムな背景色
             });
-			tile.find("[name=center]").val(value["center"]);
-			tile.find("[name=top-left]").val(value["top-left"]);
-			tile.find("[name=top-right]").val(value["top-right"]);
-			tile.find("[name=bottom-left]").val(value["bottom-left"]);
-			tile.find("[name=bottom-right]").val(value["bottom-right"]);
+			tile.find("[name=center]").text(value["center"]);
+			tile.find("[name=top-left]").text(value["top-left"]);
+			tile.find("[name=top-right]").text(value["top-right"]);
+			tile.find("[name=bottom-left]").text(value["bottom-left"]);
+			tile.find("[name=bottom-right]").text(value["bottom-right"]);
 		}
 		
 		me.clearMainMatrixView();
@@ -207,9 +262,26 @@ function Index() {
 		});
 	}
 	
+	self.setupEvents = function() {
+		var me = this;
+		$("#button-seed-update").click(function() {
+			var seed = random.intRange(0, 4294967296);
+			console.log("create seed = " + String(seed));
+			random.seed(seed);
+			me.updateMainMatrix();
+			me.setSeedNumber(seed);
+		});
+		$("#button-update").click(function() {
+			var seed = parseInt(me.seedInputElement().val());
+			random.seed(seed);
+			me.updateMainMatrix();
+		});
+	}
+
     self.start = function() {
         console.log("APPLY INDEX.JS ************************");
 		var me = this;
+		me.setupEvents();
 		me.updateMainMatrix();
 		/*
 		console.log("self.alphabetLowerCharacters", self.alphabetLowerCharacters);
